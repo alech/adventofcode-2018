@@ -25,3 +25,11 @@ executable day2
   main-is:             Day2.hs
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
+
+executable day3
+  hs-source-dirs:      src
+  main-is:             Day3.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
+                     , containers
+                     , split >= 0.2.3.3 && < 0.3
