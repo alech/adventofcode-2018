@@ -46,29 +46,29 @@ mergeEvents gse1 gse2 =
 parseIntoGuardShiftMap :: [String] -> GuardShiftMap
 parseIntoGuardShiftMap log =
     snd $ foldl (\(ci, m) a ->
-            case head (trace a $ fourthWord a) of
-                '#' ->
-                    if isJust (guardId ci) && (not . null) (ciFallsAsleepMinutes ci) && (not . null) (ciWakesUpMinutes ci) then
-                        (CurrentInfo (guardIdFromLogLine a) [] [],
-                         traceShow ci $ insertWith mergeEvents
-                            (fromJust $ guardId ci)
-                            (GuardShiftEvents (ciFallsAsleepMinutes ci) (ciWakesUpMinutes ci))
-                            m
-                        )
-                    else
-                        (CurrentInfo (guardIdFromLogLine a) [] [], m)
-                'a' -> -- "asleep"
+            case fourthWord a of
+                '#':_ ->
+                    (ci {
+                        guardId = (guardIdFromLogLine a)
+                    }, m)
+                'a':_ -> -- "asleep"
                     traceShow ci $ (ci {
                         ciFallsAsleepMinutes = (ciFallsAsleepMinutes ci) ++
                             [minuteFromLogLine a] 
                         },
                     m)
-                'u' -> -- "up"
-                    traceShow ci $ (ci { 
-                        ciWakesUpMinutes = (ciWakesUpMinutes ci) ++
-                            [minuteFromLogLine a]
-                        },
-                    m)
+                'u':_ -> -- "up"
+                    if isJust (guardId ci) && (not . null) (ciFallsAsleepMinutes ci) then
+                        (CurrentInfo (guardId ci) [] [],
+                         traceShow ci $ insertWith mergeEvents
+                            (fromJust $ guardId ci)
+                            (GuardShiftEvents (ciFallsAsleepMinutes ci) (ciWakesUpMinutes ci ++ [minuteFromLogLine a]))
+                            m
+                        )
+                    else
+                        (CurrentInfo (guardId ci) [] [], m)
+                _ ->
+                    (ci, m)
         ) (emptyCi, empty) log
 
 totalSleepTime :: GuardShiftMap -> [(GuardId, Integer)]
@@ -95,11 +95,18 @@ guardAsleepByMinute gid gsm =
 
 sleepiestMinute :: [(Integer, Maybe Integer)] -> Integer
 sleepiestMinute =
-    fst . head . sortBy (\(_, a) (_, b) -> b `compare` a)
+    fst . head . sortBy cmpSndReverse
 
 guardIdOfSleepiestGuard :: [String] -> GuardId
 guardIdOfSleepiestGuard content =
-    fst $ head $ sortBy (\(_, a) (_, b) -> b `compare` a) $ totalSleepTime $ parseIntoGuardShiftMap content
+    fst $ head $ sortBy cmpSndReverse $ totalSleepTime $ parseIntoGuardShiftMap content
+
+guardsAsleepByMinute :: GuardShiftMap -> [(GuardId, [(Integer, Maybe Integer)])]
+guardsAsleepByMinute gsm =
+    (\gid -> (gid, guardAsleepByMinute gid gsm)) <$> (keys gsm)
+
+cmpSndReverse :: (Ord a, Ord b) => (a, b) -> (a, b) -> Ordering
+cmpSndReverse (_, a) (_, b) = b `compare` a
 
 main :: IO ()
 main = do
@@ -110,4 +117,7 @@ main = do
     print $ sleepiestMinute $ guardAsleepByMinute
                                 (guardIdOfSleepiestGuard content)
                                 (parseIntoGuardShiftMap content)
-    return ()
+    print $ head $ sortBy (\(_, (_, a)) (_, (_, b)) -> b `compare` a)
+        ((\(gid, l) -> (gid, head $ sortBy cmpSndReverse l)) <$>
+        (guardsAsleepByMinute (parseIntoGuardShiftMap content)))
+        
