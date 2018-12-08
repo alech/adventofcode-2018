@@ -77,10 +77,18 @@ finiteSizeByIndex :: Int -> [Coordinate] -> Int
 finiteSizeByIndex i cl =
     length $ filter (==Just i) (closestGrid cl)
 
+-- given a max distance n, a coordinate and a list of coordinates,
+-- check whether the summed up distance to all coordinates is less than
+-- n.
+summedDistanceLessThan :: Integer -> [Coordinate] -> Coordinate -> Bool
+summedDistanceLessThan n cl c =
+    sum ((distance c) <$> cl) < n
+
 main :: IO ()
 main = do
     [f]     <- getArgs
     content <- readFile f
-    let coords = coordinates content in
+    let coords = coordinates content in do
         print $ head $ reverse $ sort $ map (\i -> finiteSizeByIndex i coords) $ filter (\i -> not $ isOnGridBorder i coords) [0..length coords-1]
+        print $ length $ filter (summedDistanceLessThan 10000 coords) (grid coords)
     return ()
