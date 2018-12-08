@@ -1,8 +1,7 @@
 module Main where
 
 import System.Environment
-import Data.List (nub)
-import Data.Sort (sort)
+import Data.List (nub, sort)
 
 type Coordinate = (Integer, Integer)
 
