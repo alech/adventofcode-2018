@@ -47,7 +47,7 @@ maxScore :: Player -> Marble -> Score
 maxScore p m =
     Data.Map.foldr max 0 (scoreboard finalGameState)
     where
-        finalGameState = Prelude.foldr placeMarble (startState p m) (reverse [1..m])
+        finalGameState = foldl' (flip placeMarble) (startState p m) [1..m]
 
 placeMarble :: Marble -> GameState -> GameState
 placeMarble i gs
