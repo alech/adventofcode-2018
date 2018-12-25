@@ -47,15 +47,15 @@ maxScore :: Player -> Marble -> Score
 maxScore p m =
     Data.Map.foldr max 0 (scoreboard finalGameState)
     where
-        finalGameState = foldl' (\gs nextMarble -> placeMarble gs nextMarble) (startState p m) [1..m]
+        finalGameState = Prelude.foldr placeMarble (startState p m) (reverse [1..m])
 
-placeMarble :: GameState -> Marble -> GameState
-placeMarble gs i
+placeMarble :: Marble -> GameState -> GameState
+placeMarble i gs
     | (i `mod` 23) == 0  =
         gs {
             circle     = updateCircle23 (circle gs) (currMarble gs)
           , currMarble = updateCurrMarble23 (circle gs) (currMarble gs)
-          , currPlayer = nextPlayer gs
+          , currPlayer = nextPlayer
           , scoreboard = updateScoreboard (scoreboard gs) (currPlayer gs) (circle gs) i (currMarble gs)
         }
     -- "normal" case, update circle
@@ -63,10 +63,10 @@ placeMarble gs i
         gs {
             circle = updateCircle (circle gs) (currMarble gs) i
           , currMarble = i
-          , currPlayer = nextPlayer gs
+          , currPlayer = nextPlayer
         }
     where
-        nextPlayer gs = (currPlayer gs + 1) `mod` (numPlayers gs)
+        nextPlayer = (currPlayer gs + 1) `mod` (numPlayers gs)
 
 -- normal update case, add new marble in the correct position (2 to the right
 -- of the current marble)
