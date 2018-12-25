@@ -4,6 +4,7 @@ import System.Environment
 import Data.Map (Map(..), foldr, empty, adjust, insert, member)
 import Data.Maybe (fromJust)
 import Data.List
+import Data.Foldable (foldl')
 --import Debug.Trace
 
 type Player = Integer
@@ -13,6 +14,14 @@ type Score  = Integer
 type Circle     = [Marble]
 type Scoreboard = Map Player Score
 
+data GameState = GameState {
+        numPlayers :: Player
+      , maxMarble  :: Marble
+      , circle     :: Circle
+      , currMarble :: Marble
+      , currPlayer :: Player
+      , scoreboard :: Scoreboard
+    }
 -- input looks like this:
 -- 439 players; last marble is worth 71307 points
 parseInput :: String -> (Player, Marble)
@@ -21,42 +30,43 @@ parseInput s =
     where
         nthWord i = read (words s !! i)
 
+-- start playing with a 0 marble in the circle, current marble is 0,
+-- current player is 0, scoreboard is empty
+startState :: Player -> Marble -> GameState
+startState p m =
+    GameState {
+        numPlayers = p
+      , maxMarble  = m
+      , circle     = [ 0 ]
+      , currMarble = 0
+      , currPlayer = 0
+      , scoreboard = empty
+    }
+
 maxScore :: Player -> Marble -> Score
 maxScore p m =
-    -- start playing with a 0 marble in the circle, current marble is 0,
-    -- current player is 0, scoreboard is empty and marble to be placed next is
-    -- 1
-    play p m [0] 0 0 empty 1
+    Data.Map.foldr max 0 (scoreboard finalGameState)
+    where
+        finalGameState = foldl' (\gs nextMarble -> placeMarble gs nextMarble) (startState p m) [1..m]
 
-play :: Player -> Marble -> Circle -> Marble -> Player -> Scoreboard -> Marble -> Score
-play numPlayers maxMarble circle currMarble currPlayer scoreboard i
-    -- we are done, let's calculate the max score from the scoreboard
-    | i == maxMarble + 1 = Data.Map.foldr max 0 scoreboard
-    -- special case, need to update the circle, the current marble and
-    -- the scoreboard based on the mod 23 rule
+placeMarble :: GameState -> Marble -> GameState
+placeMarble gs i
     | (i `mod` 23) == 0  =
-        play
-            numPlayers
-            maxMarble
-            --(trace ("new circ23: " ++ show (updateCircle23 circle currMarble)) (updateCircle23 circle currMarble))
-            (updateCircle23 circle currMarble)
-            (updateCurrMarble23 circle currMarble)
-            nextPlayer
-            (updateScoreboard scoreboard currPlayer circle i currMarble)
-            (i + 1)
+        gs {
+            circle     = updateCircle23 (circle gs) (currMarble gs)
+          , currMarble = updateCurrMarble23 (circle gs) (currMarble gs)
+          , currPlayer = nextPlayer gs
+          , scoreboard = updateScoreboard (scoreboard gs) (currPlayer gs) (circle gs) i (currMarble gs)
+        }
     -- "normal" case, update circle
     | otherwise          =
-        play
-            numPlayers
-            maxMarble
-            --(trace ("new circle: " ++ show (updateCircle circle currMarble i)) (updateCircle circle currMarble i))
-            (updateCircle circle currMarble i)
-            i
-            nextPlayer
-            scoreboard
-            (i + 1)
+        gs {
+            circle = updateCircle (circle gs) (currMarble gs) i
+          , currMarble = i
+          , currPlayer = nextPlayer gs
+        }
     where
-        nextPlayer = (currPlayer + 1) `mod` numPlayers
+        nextPlayer gs = (currPlayer gs + 1) `mod` (numPlayers gs)
 
 -- normal update case, add new marble in the correct position (2 to the right
 -- of the current marble)
