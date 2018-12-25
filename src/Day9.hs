@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
 import System.Environment
@@ -5,6 +6,7 @@ import Data.Map (Map(..), foldr, empty, adjust, insert, member)
 import Data.Maybe (fromJust)
 import Data.List
 import Control.DeepSeq
+import GHC.Generics (Generic)
 --import Debug.Trace
 
 type Player = Integer
@@ -22,6 +24,8 @@ data GameState = GameState {
       , currPlayer :: Player
       , scoreboard :: Scoreboard
     }
+    deriving Generic
+instance NFData GameState
 
 -- input looks like this:
 -- 439 players; last marble is worth 71307 points
