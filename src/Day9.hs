@@ -9,7 +9,7 @@ import Control.DeepSeq
 import GHC.Generics (Generic)
 import Data.List.PointedList hiding (next, moveN, deleteRight)
 import Data.List.PointedList.Circular (next, moveN, deleteRight)
---import Debug.Trace
+import Debug.Trace
 
 type Player = Integer
 type Marble = Integer
@@ -57,7 +57,10 @@ maxScore p m =
     where
         finalGameState = foldl' (\gs nextMarble ->
             let
-                output = force (placeMarble nextMarble gs)
+                output = if nextMarble `mod` 1000 == 0 then
+                            traceShow nextMarble (force (placeMarble nextMarble gs))
+                         else
+                            force (placeMarble nextMarble gs)
             in
                 output) (startState p m) [1..m]
 
