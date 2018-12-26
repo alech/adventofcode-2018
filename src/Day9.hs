@@ -32,7 +32,7 @@ instance NFData (PointedList Marble) where
 instance NFData GameState
 
 -- input looks like this:
--- 439 players; last marble is worth 71307 points
+-- 439 players; last marble is worth 7Data.List.1307 points
 parseInput :: String -> (Player, Marble)
 parseInput s =
     (nthWord 0, nthWord 6)
@@ -58,28 +58,26 @@ maxScore p m =
         finalGameState = foldl' (\gs nextMarble ->
             let
                 output = if nextMarble `mod` 1000 == 0 then
-                            traceShow nextMarble (force (placeMarble nextMarble gs))
+                            traceShow nextMarble (force (placeMarbles nextMarble gs))
                          else
-                            force (placeMarble nextMarble gs)
+                            force (placeMarbles nextMarble gs)
             in
-                output) (startState p m) [1..m]
+                output) (startState p m) [23,46..m]
 
-placeMarble :: Marble -> GameState -> GameState
-placeMarble i gs
-    | (i `mod` 23) == 0  =
-        gs {
-            circle     = updateCircle23 (circle gs)
-          , currPlayer = nextPlayer
-          , scoreboard = updateScoreboard (scoreboard gs) (currPlayer gs) (circle gs) i
-        }
-    -- "normal" case, update circle
-    | otherwise          =
-        gs {
-            circle = updateCircle (circle gs) i
-          , currPlayer = nextPlayer
+-- place the marbles for the 22 "normal" steps and the one special one,
+-- update the game state based on it
+placeMarbles :: Marble -> GameState -> GameState
+placeMarbles i gs =
+    gs {
+        circle     = updateCircle23 insertedCircle
+      , currPlayer = nextPlayer
+      , scoreboard = updateScoreboard (scoreboard gs) (currPlayer gs) (insertedCircle) i
         }
     where
-        nextPlayer = (currPlayer gs + 1) `mod` (numPlayers gs)
+        nextPlayer =
+            (currPlayer gs + 23) `mod` (numPlayers gs)
+        insertedCircle =
+            Data.List.foldr (flip updateCircle) (circle gs) $ reverse [i-22..i-1]
 
 -- normal update case, add new marble in the correct position (2 to the right
 -- of the current marble)
