@@ -3,7 +3,7 @@ module Main where
 import Control.Applicative
 import Text.Trifecta
 import System.Environment
-import Data.List (nub, intercalate, sortBy)
+import Data.List (nub, intercalate, minimumBy)
 import Codec.Picture
 
 type Coordinate = (Integer, Integer)
