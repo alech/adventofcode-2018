@@ -4,6 +4,7 @@ import System.Environment
 import Data.Map (lookup, fromList, Map(..))
 import Text.Trifecta
 import Data.Maybe
+import Data.List (intercalate)
 
 type InitialState = String
 type RuleMap = Map String Char
@@ -31,7 +32,7 @@ parseInput = do
 -- give a space of 20 on the left and right to allow growth
 initialPotArea :: InitialState -> String
 initialPotArea initialState =
-    (replicate 20 '.') ++ initialState ++ (replicate 20 '.')
+    (replicate 20 '.') ++ initialState ++ (replicate 1000 '.')
 
 spread :: RuleMap -> String -> String
 spread rules area =
@@ -50,6 +51,11 @@ score :: String -> Integer
 score s =
     sum $ (\(i, c) -> if c == '#' then i else 0) <$> zip [-20..] s
 
+-- determined by looking at the output of the first ~150 generations
+-- and their scores, patterns just moves on to the right every generation
+-- and thus increases by 52 each time.
+scoreForHighGenerations i = (27820-500*52) + 52*i
+
 main :: IO ()
 main = do
     [f]     <- getArgs
@@ -58,6 +64,8 @@ main = do
         parseResult = parseString parseInput mempty content
         (initial, ruleMap) = (\(Success x) -> x) parseResult
         area = initialPotArea initial
-        finalState = last $ take 21 $ iterate (spread ruleMap) area
+        finalState = last $ take 21 (iterate (spread ruleMap) area)
+    putStrLn $ intercalate "\n" $ take 151 $ map (\(i, a) -> show i ++ ": " ++ a ++ ": " ++ show (score a)) $ zip [1..] (iterate (spread ruleMap) area)
     print finalState
     print $ score finalState
+    print $ scoreForHighGenerations 50000000001
