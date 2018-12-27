@@ -4,6 +4,7 @@ import System.Environment
 import Data.Map (Map(..), (!?), keys, fromList)
 import Data.Maybe
 import Data.List (intercalate, nubBy, (\\))
+import Debug.Trace
 
 type Coordinate = (Integer, Integer)
 type TrackMap = Map Coordinate TrackTile
@@ -183,9 +184,19 @@ sameCoordinates :: Cart -> Cart -> Bool
 sameCoordinates c1 c2 =
     coordinate c1 == coordinate c2
 
-collisionCoordinate :: [Cart] -> Coordinate
-collisionCoordinate carts =
-    coordinate $ head $ carts \\ (nubBy sameCoordinates carts)
+collisionCoordinates :: [Cart] -> [Coordinate]
+collisionCoordinates carts =
+    coordinate <$> carts \\ (nubBy sameCoordinates carts)
+
+-- move carts and potentially remove collided carts
+moveAndRemoveCarts :: TrackMap -> [Cart] -> [Cart]
+moveAndRemoveCarts trackMap carts =
+    if cartsHaveCollided newCarts then
+        filter (\c -> coordinate c `notElem` collisionCoordinates newCarts) newCarts
+    else
+        newCarts
+    where
+        newCarts = (moveCart trackMap) <$> carts
 
 main :: IO ()
 main = do
@@ -196,4 +207,6 @@ main = do
         trackMap       = parseMap cwc
         carts          = parseCarts cwc
         collisionState = head $ dropWhile (not . cartsHaveCollided) $ iterate (fmap (moveCart trackMap)) carts
-    print $ collisionCoordinate collisionState
+        oneCarLeftState = head $ dropWhile (\cs -> length cs > 1) $ iterate (\c -> traceShow c (moveAndRemoveCarts trackMap c)) carts
+    print $ collisionCoordinates collisionState
+    print $ oneCarLeftState
