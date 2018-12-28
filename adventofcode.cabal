@@ -110,3 +110,9 @@ executable day13
   default-language:    Haskell2010
   build-depends:       base >= 4.7 && < 5
                      , containers
+
+executable day14
+  hs-source-dirs:      src
+  main-is:             Day14.hs
+  default-language:    Haskell2010
+  build-depends:       base >= 4.7 && < 5
