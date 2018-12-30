@@ -6,48 +6,57 @@ import Data.Int
 import Control.Monad.State.Strict
 import Control.DeepSeq
 import GHC.Generics (Generic)
-import Data.Sequence
+import qualified Data.IntMap as IM
+import Data.Maybe
 
 data RecipeState = RecipeState {
-    recipes :: Seq Int8
+    recipes :: IM.IntMap Int8
   , firstElfIndex  :: Int
   , secondElfIndex :: Int
+  , numRecipes :: Int
   }
   deriving (Show, Eq, Generic)
 instance NFData RecipeState
 
-playGame :: Int -> State RecipeState (Seq Int8)
+playGame :: Int -> State RecipeState [Int8]
 playGame 0 = do
-    RecipeState l _ _ <- get
-    return l
+    RecipeState r _ _ nr <- get
+    --return $ mapMaybe (\i -> IM.lookup i r) [nr-10..nr]
+    return $ snd <$> IM.toAscList r
 playGame x = do
     recipeState <- get
     put $ force $ RecipeState {
         recipes = newRecipes recipeState
       , firstElfIndex = newIndex (firstElfIndex recipeState) recipeState
       , secondElfIndex = newIndex (secondElfIndex recipeState) recipeState
+      , numRecipes = newNumRecipes recipeState
     }
-    playGame (x - 1)
+    playGame (x - numsAdded recipeState)
     where
         newRecipeNumber rs =
-              (recipes rs `index` firstElfIndex rs)
-            + (recipes rs `index` secondElfIndex rs)
+              (recipes rs IM.! firstElfIndex rs)
+            + (recipes rs IM.! secondElfIndex rs)
         newRecipes rs =
             if newRecipeNumber rs >= 10 then
-                recipes rs |> newRecipeNumber rs `div` 10 |> newRecipeNumber rs `mod` 10
+                IM.insert
+                (numRecipes rs + 1) (newRecipeNumber rs `mod` 10)
+                (IM.insert (numRecipes rs) (newRecipeNumber rs `div` 10) (recipes rs))
             else
-                recipes rs |> newRecipeNumber rs
+                IM.insert
+                (numRecipes rs) (newRecipeNumber rs) (recipes rs)
+        newNumRecipes rs = numRecipes rs + numsAdded rs
+        numsAdded rs = if newRecipeNumber rs >= 10 then 2 else 1
         newIndex :: Int -> RecipeState -> Int
         newIndex i rs =
-            (i + 1 + fromIntegral (newRecipes rs `index` i)) `mod` Data.Sequence.length (newRecipes rs)
+            (i + 1 + fromIntegral (newRecipes rs IM.! i)) `mod` (newNumRecipes rs)
 
 initialRecipeState :: RecipeState
-initialRecipeState = RecipeState (fromList [3, 7]) 0 1
+initialRecipeState = RecipeState (IM.fromList [(0,3), (1,7)]) 0 1 2
 
 main :: IO ()
 main = do
     [f]     <- getArgs
     input <- read <$> readFile f :: IO Int
-    putStrLn $ concatMap show $ Data.Sequence.take 10 $ Data.Sequence.drop input $ evalState (playGame input) initialRecipeState
+    putStrLn $ concatMap show $ take 10 $ drop input $ evalState (playGame (input + 10)) initialRecipeState
     --print $ drop input $ recipes $ head $ dropWhile (\s -> length (recipes s) < input + 10) $ iterate nextRecipeState initialRecipeState
     return ()
