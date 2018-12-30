@@ -1,41 +1,53 @@
+{-# LANGUAGE DeriveGeneric #-}
 module Main where
 
 import System.Environment
 import Data.Int
+import Control.Monad.State.Strict
+import Control.DeepSeq
+import GHC.Generics (Generic)
+import Data.Sequence
 
-data State = State {
-    recipes :: [Int8]
+data RecipeState = RecipeState {
+    recipes :: Seq Int8
   , firstElfIndex  :: Int
   , secondElfIndex :: Int
   }
-  deriving (Show, Eq)
+  deriving (Show, Eq, Generic)
+instance NFData RecipeState
 
-nextState :: State -> State
-nextState state =
-    State {
-        recipes = newRecipes
-      , firstElfIndex = newIndex (firstElfIndex state)
-      , secondElfIndex = newIndex (secondElfIndex state)
+playGame :: Int -> State RecipeState (Seq Int8)
+playGame 0 = do
+    RecipeState l _ _ <- get
+    return l
+playGame x = do
+    recipeState <- get
+    put $ force $ RecipeState {
+        recipes = newRecipes recipeState
+      , firstElfIndex = newIndex (firstElfIndex recipeState) recipeState
+      , secondElfIndex = newIndex (secondElfIndex recipeState) recipeState
     }
+    playGame (x - 1)
     where
-        newRecipeNumber =
-              (recipes state !! firstElfIndex state)
-            + (recipes state !! secondElfIndex state)
-        newRecipes = recipes state ++
-            if newRecipeNumber >= 10 then
-                [newRecipeNumber `div` 10, newRecipeNumber `mod` 10]
+        newRecipeNumber rs =
+              (recipes rs `index` firstElfIndex rs)
+            + (recipes rs `index` secondElfIndex rs)
+        newRecipes rs =
+            if newRecipeNumber rs >= 10 then
+                recipes rs |> newRecipeNumber rs `div` 10 |> newRecipeNumber rs `mod` 10
             else
-                [newRecipeNumber]
-        newIndex :: Int -> Int
-        newIndex i =
-            (i + 1 + fromIntegral (newRecipes !! i)) `mod` length newRecipes
+                recipes rs |> newRecipeNumber rs
+        newIndex :: Int -> RecipeState -> Int
+        newIndex i rs =
+            (i + 1 + fromIntegral (newRecipes rs `index` i)) `mod` Data.Sequence.length (newRecipes rs)
 
-initialState :: State
-initialState = State [3, 7] 0 1
+initialRecipeState :: RecipeState
+initialRecipeState = RecipeState (fromList [3, 7]) 0 1
 
 main :: IO ()
 main = do
     [f]     <- getArgs
     input <- read <$> readFile f :: IO Int
-    print $ drop input $ recipes $ head $ dropWhile (\s -> length (recipes s) < input + 10) $ iterate nextState initialState
+    putStrLn $ concatMap show $ Data.Sequence.take 10 $ Data.Sequence.drop input $ evalState (playGame input) initialRecipeState
+    --print $ drop input $ recipes $ head $ dropWhile (\s -> length (recipes s) < input + 10) $ iterate nextRecipeState initialRecipeState
     return ()
